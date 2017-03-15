@@ -1,0 +1,107 @@
+---
+title: "Homework 2"
+author: "linshuangquan"
+date: "2017.03.12"
+output: word_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#No.3
+
+Because$X_k \sim N(\mu_k.\sigma_k)$,               
+Thus\[Pr(Y=k|X=x)=\frac{\Pi_k f_k(c)}{\sum^k_{l=1}\pi_l f_l(x)} \propto \Pi_k f_k(c)\]
+\[log(Pr) \propto log(\pi_k)+log(\frac{1}{\sqrt(2\pi) \sigma_k}\exp(-\frac{(x-\mu_k)^2}{2\sigma^2_k}))\]
+\[log(Pr) \propto log(\pi_k)-log(\sigma_k)-\frac{(x-\mu_k)^2}{2\sigma^2_k}\]
+Thereforce the discriminant function:
+\[\delta_k(x)=-\frac{1}{2\sigma_k} x^2+x\cdot\frac{\mu_k}{\sigma_k^2}-\frac{\mu_k^2}{2\sigma_k^2}+log(\frac{\pi_k}{\sigma_k})\]
+So the it is not linear, means quadratic.
+
+#No.5
+
+##a
+If the Bayes decision boundary is linear, on the training set, QDA is more flexiblity so perform better. On the test set, LDA  perform better than QDA because QDA wiil cause overfitting now.
+
+##b
+If the Bayes decision bounary is non-linear, we expect QDA to perform better both on the training and test sets.
+
+##c
+Yes, when the the sample size n increases, the boundary will be more complicate due to variance of data. So QDA will has better fit effect because it is more flexiblity than LDA.
+
+##d
+False. QDA will cause overfitting when the Bayes boundary is linear, thus will has higher test rate than LDA.
+
+
+#No.11
+```{r}
+library(ISLR)
+attach(Auto)
+```
+
+##a
+```{r}
+Auto$mpg01 <- ifelse(mpg>=median(mpg),1,0)
+```
+
+##b
+```{r}
+cor(Auto$mpg01,Auto[,1:8])
+pairs(Auto[,-9])
+par(mfrow=c(2,4))
+for(i in 1:8){
+        boxplot(Auto[,i]~Auto$mpg01,main=colnames(Auto)[i])
+}
+```
+From the correlation and the picture, we can find that these variables can be used for predicting "mpg01":mpg,cylinders,displacement,horsepower,weight,
+
+##c
+```{r}
+set.seed(123)
+sample <- sample(rep(c(1:4),length=dim(Auto)[1]))
+trainset<- Auto[sample!=4,]
+testset <- Auto[sample==4,]
+```
+
+##d
+```{r}
+library(MASS)
+lda.fit = lda(mpg01 ~ cylinders + weight + displacement + horsepower, data = trainset)
+lda.pred = predict(lda.fit, testset)
+mean(lda.pred$class != testset$mpg01)
+```
+##e
+```{r}
+qda.fit = qda(mpg01 ~ cylinders + weight + displacement + horsepower, data = trainset)
+qda.pred = predict(qda.fit, testset)
+mean(qda.pred$class != testset$mpg01)
+```
+##f
+```{r}
+glm.fit <- glm(mpg01 ~ cylinders + weight + displacement + horsepower, data = trainset,family="binomial")
+summary(glm.fit)
+#remove the variable that p-value bigger than 0.05
+glm.fit2 <- glm(mpg01 ~ displacement + horsepower, data = trainset,family="binomial")
+summary(glm.fit2)
+glm.probs = predict(glm.fit2, testset, type = "response")
+glm.pred = ifelse(glm.probs>0.5,1,0)
+mean(glm.pred != testset$mpg01)
+```
+##g
+```{r}
+library(class)
+errorrate <- rep(0,5)
+set.seed(1234)
+for(i in 1:10){
+        knn.pred=knn(trainset[,2:5],testset[,2:5],trainset$mpg01,k=i)
+        errorrate[i]<- mean(knn.pred != testset$mpg01)
+}
+names(errorrate) <- 1:10
+errorrate
+detach(Auto)
+```
+So when K=3 performes the best.
+
+```
+
+
