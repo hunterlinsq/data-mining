@@ -1,0 +1,134 @@
+---
+title: "HW3"
+author: "linshuangquan"
+date: "2017年3月18日"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## No.8
+
+###a
+```{r}
+set.seed(1)
+x <- rnorm(100)
+y <- x-2*x^2+rnorm(100)
+```
+In this case,n=100,p=2.the equation form:
+\[y_t=x_t-2x_t^2+\epsilon_t\]
+
+###b
+```{r}
+plot(x,y)
+```
+There is nonlinear relationship betwwen x and y.
+
+###c
+```{r}
+library(glmnet)
+library(boot)
+dat <- data.frame(x,y)
+cv.error <- rep(NA,4)
+for(i in 1:4){
+        glm.fit <- glm(y~poly(x,i),data = dat)
+        cv.error[i] <- cv.glm(dat,glm.fit)$delta[1]
+}
+names(cv.error) <- 1:4
+cv.error
+```
+When p=2, the fit is best.
+
+###d
+```{r}
+set.seed(2)
+cv.error2 <- rep(NA,4)
+for(i in 1:4){
+        glm.fit <- glm(y~poly(x,i),data = dat)
+        cv.error[i] <- cv.glm(dat,glm.fit)$delta[1]
+}
+names(cv.error) <- 1:4
+cv.error2
+```
+The result is the same, because LOOCV will be the same since it evaluates n folds of a single observation.
+
+###e
+
+The polynomial of 2 has the lowest LOOCV error. Because the data are generated from quadratic equation.
+
+###f
+
+```{r}
+summary(glm(y~poly(x,4),data = dat))
+```
+We can see that the p-value of poly of 3 and 4 are insignificant, which agree with cross-validation results.
+
+
+
+##No.9
+
+###a
+
+```{r}
+library(MASS)
+attach(Boston)
+mu <- mean(medv)
+mu
+```
+
+###b
+
+```{r}
+se <- sd(medv)/(sqrt(length(medv)))
+se
+```
+
+###c
+```{r}
+boot.fn <- function(data,index){
+        return(mean(data[index]))
+}
+
+mu_boot <- boot(medv, boot.fn, 1000)
+mu_boot
+```
+
+###d
+The confidence interval of bootstrap:
+```{r}
+c(mu_boot$t0-1.96*0.4135401,mu_boot$t0+1.96*0.4135401)
+t.test(medv)$conf.int
+```
+
+###e
+```{r}
+med <- median(medv)
+```
+
+###f
+```{r}
+boot.fn2 <- function(data,index){
+        return(median(data[index]))
+}
+med_boot <- boot(medv,boot.fn2,1000)
+med_boot
+```
+Thus the bootstrap standard error of median is 0.3858694.
+
+###g
+
+```{r}
+quan_1 <- quantile(medv,0.1)
+```
+
+###h
+```{r}
+boot.fn3 <- function(data,index){
+        return(quantile(data[index],0.1))
+}
+quan_boot <- boot(medv,boot.fn3,1000)
+quan_boot
+```
+The standard error is 0.5148446.
