@@ -1,0 +1,202 @@
+---
+title: "HW4"
+author: "林双全-15420151152800"
+date: "2017年3月31日"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#No.8
+
+##(a)
+```{r}
+set.seed(1234)
+x <- rnorm(100)
+e <- rnorm(100)
+```
+
+##(b)
+```{r}
+b0 <- 4
+b1 <- 3
+b2 <- 2
+b3 <- 1
+y <- b0+b1*x+b2*x^2+b3*x^3+e
+dat <- data.frame(y=y,x=x)
+```
+
+##(c)
+```{r}
+library(leaps)
+regfit.full <- regsubsets(y~poly(x,10,raw = TRUE),dat,nvmax = 10)
+reg.summary <- summary(regfit.full)
+reg.summary
+which.min(reg.summary$cp)
+which.min(reg.summary$bic)
+which.max(reg.summary$adjr2)
+
+par(mfrow=c(3,1))
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type="l")
+points(which.min(reg.summary$cp),reg.summary$cp[which.min(reg.summary$cp)],col="red",pch=20)
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type="l")
+points(which.min(reg.summary$bic),reg.summary$bic[which.min(reg.summary$bic)],col="red",pch=20)
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted Rsquare",type="l")
+points(which.max(reg.summary$adjr2),reg.summary$adjr2[which.max(reg.summary$adjr2)],col="red",pch=20)
+#Thus we choose poly=3 is the best model.
+
+coef(regfit.full,3)
+```
+The chosed variables are x, x^2 and x^3.
+
+##(d)
+
+```{r}
+#forward stepwise
+regfit.fwd <- regsubsets(y~poly(x,10,raw = TRUE),dat,nvmax = 10,method = "forward")
+summary.fwd<- summary(regfit.fwd)
+which.min(summary.fwd$cp)
+which.min(summary.fwd$bic)
+which.max(summary.fwd$adjr2)
+par(mfrow=c(3,1))
+plot(summary.fwd$cp,xlab="Number of Variables",ylab="Cp",type="l")
+points(which.min(summary.fwd$cp),summary.fwd$cp[which.min(summary.fwd$cp)],col="red",pch=20)
+plot(summary.fwd$bic,xlab="Number of Variables",ylab="BIC",type="l")
+points(which.min(summary.fwd$bic),summary.fwd$bic[which.min(summary.fwd$bic)],col="red",pch=20)
+plot(summary.fwd$adjr2,xlab="Number of Variables",ylab="Adjusted Rsquare",type="l")
+points(which.max(summary.fwd$adjr2),summary.fwd$adjr2[which.max(summary.fwd$adjr2)],col="red",pch=20)
+#best model of forward stepwise
+coef(regfit.fwd,3)
+
+
+#backward stepwise
+regfit.bwd <- regsubsets(y~poly(x,10,raw = TRUE),dat,nvmax = 10,method = "backward")
+summary.bwd<- summary(regfit.bwd)
+which.min(summary.bwd$cp)
+which.min(summary.bwd$bic)
+which.max(summary.bwd$adjr2)
+par(mfrow=c(3,1))
+plot(summary.bwd$cp,xlab="Number of Variables",ylab="Cp",type="l")
+points(which.min(summary.bwd$cp),summary.bwd$cp[which.min(summary.bwd$cp)],col="red",pch=20)
+plot(summary.bwd$bic,xlab="Number of Variables",ylab="BIC",type="l")
+points(which.min(summary.bwd$bic),summary.bwd$bic[which.min(summary.bwd$bic)],col="red",pch=20)
+plot(summary.fwd$adjr2,xlab="Number of Variables",ylab="Adjusted Rsquare",type="l")
+points(which.max(summary.bwd$adjr2),summary.bwd$adjr2[which.max(summary.bwd$adjr2)],col="red",pch=20)
+#best model of backward stepwise
+coef(regfit.bwd,5)
+coef(regfit.bwd,4)
+```
+
+We can see that the result of forward stepwise is the same as (b), but backward stepwise is different, it choose additional variables.
+
+##(e)
+```{r}
+library(glmnet)
+xmat = model.matrix(y ~ poly(x, 10, raw = T), data = dat)[,-1]
+lasso.model <- cv.glmnet(xmat,y,alpha = 1)
+optimal.lambda <- lasso.model$lambda.min
+optimal.lambda
+par(mfrow=c(1,1))
+plot(lasso.model)
+coef(lasso.model)
+```
+The result is similar to (b), but the coefficeients of beta are little smaller except intercept.
+
+##(f)
+```{r}
+b7 <- 2
+y1 <- b0+b7*x^7+e
+dat1 <- data.frame(y=y1,x=x)
+#subset selection 
+regfit1.full <- regsubsets(y1~poly(x,10,raw = TRUE),dat1,nvmax = 10)
+reg1.summary <- summary(regfit1.full)
+which.min(reg1.summary$cp)
+which.min(reg1.summary$bic)
+which.max(reg1.summary$adjr2)
+coef(regfit1.full,1)
+coef(regfit1.full,2)
+```
+We can see that both cp and bic choose the exactly x^7, but adjr7 pick the additional variable.
+
+
+
+#No.9
+
+##(a)
+```{r}
+library(ISLR)
+data(College)
+
+set.seed(4321)
+train <- sample(c(TRUE,TRUE,FALSE),nrow(College),replace = TRUE)
+trainset <- College[train,]
+testset <- College[!train,]
+```
+
+##(b)
+```{r}
+lm.fit <- lm(Apps~.,data = trainset)
+lm.pred <- predict(lm.fit,testset)
+mean((lm.pred-testset$Apps)^2)
+```
+
+##(c)
+```{r}
+train.x <- model.matrix(Apps~.,data = trainset)
+test.x <- model.matrix(Apps~.,data = testset)
+ridge.fit <- cv.glmnet(train.x,trainset$Apps,alpha = 0)
+optimal.lambda <- ridge.fit$lambda.min
+ridge.pred <- predict(ridge.fit,test.x,s=optimal.lambda)
+mean((ridge.pred-testset$Apps)^2)
+```
+
+##(d)
+```{r}
+lasso.fit <- cv.glmnet(train.x,trainset$Apps,alpha=1)
+optimal.lambda1 <- lasso.fit$lambda.min
+optimal.lambda1
+lasso.pred <- predict(lasso.fit,test.x,s=optimal.lambda1)
+mean((lasso.pred-testset$Apps)^2)
+coef(lasso.fit)
+
+```
+
+##(e)
+```{r}
+library(pls)
+set.seed(12)
+pcr.fit <- pcr(Apps~.,data=trainset,scale=TRUE,validation="CV")
+summary(pcr.fit)
+validationplot(pcr.fit,val.type = "MSEP")
+pcr.pred <- predict(pcr.fit,newdata=testset,ncomp = 6)
+mean((pcr.pred-testset$Apps)^2)
+```
+
+##(f)
+```{r}
+pls.fit <- plsr(Apps~.,data=trainset,scale=TRUE,validation="CV")
+summary(pls.fit)
+validationplot(pls.fit,val.type = "MSEP")
+pls.pred <- predict(pls.fit,testset,ncomp = 8)
+mean((pls.pred-testset$Apps)^2)
+```
+
+##(g)
+```{r}
+test.mean <- mean(testset$Apps)
+#The R square of prediction
+#lm
+1-mean((lm.pred-testset$Apps)^2)/mean((testset$Apps-test.mean)^2)
+#ridge
+1-mean((ridge.pred-testset$Apps)^2)/mean((testset$Apps-test.mean)^2)
+#lasso
+1-mean((lasso.pred-testset$Apps)^2)/mean((testset$Apps-test.mean)^2)
+#pcr
+1-mean((pcr.pred-testset$Apps)^2)/mean((testset$Apps-test.mean)^2)
+#pls
+1-mean((pls.pred-testset$Apps)^2)/mean((testset$Apps-test.mean)^2)
+```
+We can see that accuracy of the number of college application received that we can predict are all around 90%, but the PCR method has the least R square.
+
