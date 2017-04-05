@@ -1,0 +1,183 @@
+---
+title: "midterm"
+author: "linsq"
+date: "2017年4月5日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##1
+```{r}
+#m是骰子个数，n是博饼次数
+bobing <- function(m,n){
+        res <- matrix(NA,n,m)
+        for(i in 1:n){
+                res[i,] <- sample(1:6,m,replace = TRUE)
+        }
+        return(res)
+}
+bobing(6,10)
+```
+
+##2
+```{r}
+Fibonacci <- function(n){
+        if(n==1){
+                Fib=1
+        }else if(n==2){
+                Fib==c(1,1)
+        }else{
+                Fib <- rep(NA,n)
+                Fib[1:2] <- 1
+                for(i in 3:n){
+                        Fib[i] <- Fib[i-2]+Fib[i-1]
+                }
+        }
+        return(Fib)
+}
+
+Fibonacci(10)
+```
+
+
+##3
+```{r}
+library(ISLR)
+data(Default)
+dim(Default)
+Default$student <-ifelse(Default$student=="Yes",1,0)
+Default$default <-ifelse(Default$default=="Yes",1,0)
+set.seed(1)
+train <- sample(rep(rep(c(TRUE,FALSE),times=c(7,3)),length=dim(Default)[1]))
+test <- !train
+trainset <- Default[train,]
+testset <- Default[test,]
+
+#(1)
+library(class)
+library(glmnet)
+fold <- sample(rep(1:5,length=sum(train)))
+
+error <- rep(NA,10)
+for(j in 1:10){
+        knn.pred <- rep(NA_real_,sum(train))
+        for(i in 1:5){
+                train_k <- (1:sum(train))[fold!=i]
+                test_k <- (1:sum(train))[fold==i]
+                trainset1 <- trainset[train_k,]
+                testset1 <- trainset[test_k,]
+                knn.pred[test_k] <- knn(trainset1[,2:4],testset1[,2:4],trainset1$default,k=j)
+        }
+        knn.pred <- ifelse(knn.pred==2,1,0)
+        error[j] <- mean(knn.pred!=trainset$default)
+
+}
+error
+which.min(error)
+
+
+#(2)
+knn.pred=knn(trainset[,2:4],testset[,2:4],trainset$default,k=which.min(error))
+a <- table(knn.pred,testset$default)
+(a[1,1]+a[2,2])/dim(testset)[1]
+
+glm.fit <- glm(default~student+balance+income,data = trainset,family = "binomial")
+glm.probs=predict(glm.fit,testset,type="response")  #y取1的概率
+glm.pred=rep(0,dim(testset)[1])
+glm.pred[glm.probs >.5]=1
+a <- table(glm.pred,testset$default)
+(a[1,1]+a[2,2])/dim(testset)[1]
+
+lda.fit=lda(default~student+balance+income,data = trainset)
+lda.pred=predict(lda.fit,testset)
+lda.class=lda.pred$class
+a <- table(lda.class ,testset$default)
+(a[1,1]+a[2,2])/dim(testset)[1]
+
+qda.fit=qda(default~student+balance+income,data = trainset)
+qda.class=predict(qda.fit,testset)$class 
+a <- table(qda.class ,testset$default)
+(a[1,1]+a[2,2])/dim(testset)[1]
+```
+
+
+
+
+##4
+```{r}
+library(MASS)
+library(ncvreg)
+#(1)
+generate <- function(n,p,rou){
+        sigma <- matrix(NA,p,p)
+        for(i in 1:p){
+                for(j in 1:p){
+                        sigma[i,j] <- rou^abs(i-j)
+                        sigma[j,i] <- rou^abs(i-j)
+                }
+        }
+        x <- mvrnorm(n=n,mu=rep(0,p),Sigma = sigma)
+        return(x)
+}
+
+beta <- c(rep(1,5),rep(0,5),rep(0.8,5),rep(0,85))
+beta0 <- c(0,beta)
+
+fdr <- function(b0,b1){
+        b02 <- ifelse(b0>0,1,0)
+        b12 <- ifelse(b1>0,1,0)
+        names(b12) <- NULL
+        a <- table(b02,b12)
+        colnames(a) <- c("F","T")
+        row.names(a) <- c("F","T")
+        FDR <- a[1,2]/(a[1,1]+a[1,2])
+        return(FDR)
+}
+fnr <- function(b0,b1){
+        b02 <- ifelse(b0>0,1,0)
+        b12 <- ifelse(b1>0,1,0)
+        names(b12) <- NULL
+        a <- table(b02,b12)
+        colnames(a) <- c("F","T")
+        row.names(a) <- c("F","T")
+        FNR <- a[2,1]/(a[2,2]+a[2,1])
+        res <- list(FDR=FDR,FNR=FNR)
+        return(FNR)
+        
+}
+
+FDR <- matrix(NA,100,3)
+FNR <- matrix(NA,100,3)
+for(i in 1:100){
+        x <- generate(100,100,0.5)
+        y <- x %*% beta + rnorm(100)
+        
+        lasso.fit <- cv.ncvreg(x,y,family = "gaussian",penalty = "lasso")
+        mcp.fit <-  cv.ncvreg(x,y,family = "gaussian",penalty = "MCP")
+        scad.fit <-  cv.ncvreg(x,y,family = "gaussian",penalty = "SCAD")
+        
+        coef_lasso <- coef(lasso.fit)
+        coef_mcp <- coef(mcp.fit)
+        coef_scad <- coef(scad.fit)
+        
+        FDR[i,] <- c(fdr(beta0,coef_lasso),fdr(beta0,coef_mcp),fdr(beta0,coef_scad))
+        FNR[i,] <- c(fnr(beta0,coef_lasso),fnr(beta0,coef_mcp),fnr(beta0,coef_scad))
+        
+}
+colnames(FDR) <- c("lasso","MCP","SCAD")
+colnames(FNR) <- c("lasso","MCP","SCAD")
+#(1)
+apply(FDR,2,mean)
+apply(FDR,2,sd)
+apply(FNR,2,mean)
+apply(FNR,2,sd)
+
+#(2)
+boxplot(FDR)
+boxplot(FNR)
+
+```
+
