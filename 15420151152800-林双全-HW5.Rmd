@@ -1,0 +1,88 @@
+---
+title: "HW5"
+author: "linshuangquan-15420151152800"
+date: "2017年4月15日"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# No.5
+
+##(a)           
+The traning RSS of $\hat g_2$ will be smaller because it has the higher order of derivative penalty, it is more flexible to fit the data.
+
+##(b)           
+The test RSS of $\hat g_1$ will be smaller because $\hat g_2$ would likely to overfitting.
+
+##(c)           
+When $\lambda=0$,$\hat g_1=\hat g_2$, therefore they has the same training RSS and test RSS.         
+
+
+# No.11
+
+##(a)
+```{r}
+set.seed(1)
+x1 <- rnorm(100)
+x2 <- rnorm(100)
+y <- 3+2*x1+4*x2+rnorm(100)
+```
+
+##(b)
+```{r}
+beta1 <- 1
+```
+
+##(c)
+```{r}
+a <- y-beta1*x1
+beta2 <- lm(a~x2)$coef[2]
+```
+
+##(d)
+```{r}
+beta1 <- lm((y-beta2*x2)~x1)$coef[2]
+```
+
+##(e)
+```{r}
+beta0 <- rep(NA,1000)
+beta1 <- rep(NA,1000)
+beta2 <- rep(NA,1000)
+beta1_ini <- 5
+
+for(i in 1:1000){
+        if(i==1){
+                beta2[i] <- lm((y-beta1_ini*x1)~x2)$coef[2]
+        }else{
+              beta2[i] <- lm((y-beta1[i-1]*x1)~x2)$coef[2]  
+        }
+        beta1[i] <- lm((y-beta2[i]*x2)~x1)$coef[2]
+        beta0[i] <- lm((y-beta2[i]*x2)~x1)$coef[1]
+        
+}
+
+plot(1:1000,beta0,type = "l",xlab = "iteration",ylab = "coefficient",ylim = c(1.8,4.2),col="red")
+lines(1:1000,beta1,col="blue")
+lines(1:1000,beta2,col="green")
+legend(600,2.5,c("beta0","beta1","beta2"),col=c("red","blue","green"),lty=1)
+        
+```
+
+##(f)
+```{r}
+lm.model <- lm(y~x1+x2)
+plot(1:1000,beta0,type = "l",xlab = "iteration",ylab = "coefficient",ylim = c(1.8,4.2),col="red")
+lines(1:1000,beta1,col="blue")
+lines(1:1000,beta2,col="green")
+abline(h=lm.model$coef[1],lty=2)
+abline(h=lm.model$coef[2],lty=2)
+abline(h=lm.model$coef[3],lty=2)
+legend(600,2.9,c("beta0","beta1","beta2","multiple regression"),col=c("red","blue","green","black"),lty=c(1,1,1,2))
+```
+
+##(g)           
+When the relationship betwwen X and Y is linear, only need one iteration is enough.             
