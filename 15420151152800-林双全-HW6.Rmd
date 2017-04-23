@@ -1,0 +1,161 @@
+---
+title: "HW6"
+author: "linshuangquan"
+date: "2017年4月23日"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#No.9
+
+##a
+```{r}
+library(ISLR)
+attach(OJ)
+set.seed(1234)
+train <- sample(1:dim(OJ)[1],800)
+trainset <- OJ[train,]
+testset <- OJ[-train,]
+```
+
+##b
+```{r}
+library(tree)
+tree.model <- tree(Purchase~.,data = trainset)
+summary(tree.model)
+```
+It only uses teo variables: LoyalCH and PriceDiff. There are 8 terminal nodes. The training error rate is 0.16875.
+
+##c
+```{r}
+tree.model
+```
+
+The terminal node labeled 10. The splitting variable at this node is PriceDiff.The splitting value of this node is 0.05. There are 79 points in the subtree below this node. The deviance for all points contained in region below this node is 82.28. A * in the line denotes that this is in fact a terminal node. The prediction at this node is Sale = MM. About 21.52% points in this node have CH as value of Sales. Remaining 78.48% points have MM as value of Sales.
+
+##d
+```{r}
+plot(tree.model)
+text(tree.model,pretty = 0)
+```
+
+##e
+```{r}
+predict.test <- predict(tree.model,testset,type = "class")
+test.error <- sum(predict.test!=testset$Purchase)/dim(testset)[1]
+test.error
+```
+
+##f
+```{r}
+cv.oj <- cv.tree(tree.model,FUN = prune.tree)
+cv.oj
+```
+Thereforce the best size of tree is 7.
+
+##g
+```{r}
+plot(cv.oj$size,cv.oj$dev,type="b",xlab = "Tree size",ylab = "error")
+```
+
+##h
+
+Thereforce the best size of tree is 7.
+
+##i
+```{r}
+tree.pruned <- prune.tree(tree.model,best = 7)
+```
+
+##j
+```{r}
+summary(tree.pruned)
+```
+The misclassfication of two trees are no difference.
+
+##k
+```{r}
+##unpruned
+test.error
+##pruned
+pred.pruned <- predict(tree.pruned,testset,type = "class")
+sum(pred.pruned!=testset$Purchase)/dim(testset)[1]
+
+detach(OJ)
+```
+The test error rates of pruned and unpruned are the same.
+
+
+#No.10
+
+##a
+```{r}
+Hitters <- na.omit(Hitters)
+Hitters$Salary <- log(Hitters$Salary)
+```
+
+##b
+```{r}
+set.seed(123)
+train <- sample(dim(Hitters)[1],200)
+trainset <- Hitters[train,]
+testset <- Hitters[-train,]
+```
+
+##c
+```{r}
+library(gbm)
+lambdas <- seq(0,1,by=0.01)
+train.error <- rep(NA,length(lambdas))
+test.error <- rep(NA,length(lambdas))
+for(i in 1:length(lambdas)){
+        boost.model <- gbm(Salary~.,data = trainset,distribution = "gaussian",n.trees = 1000,shrinkage = lambdas[i])
+        pred.train <- predict(boost.model,trainset,n.trees=1000)
+        pred.test <- predict(boost.model,testset,n.trees=1000)
+        train.error[i] <- mean((trainset$Salary-pred.train)^2)
+        test.error[i] <- mean((testset$Salary-pred.test)^2)
+}
+
+plot(lambdas,train.error,type = "b",xlab = "shrinkage",ylab = "train error")
+
+plot(lambdas,test.error,type = "b",xlab = "shrinkage",ylab = "test error")
+
+min(test.error)
+lambda.opt <- lambdas[which.min(test.error)]
+lambda.opt
+```
+
+##e
+```{r}
+lm.model <- lm(Salary~.,data = trainset)
+lm.pred <- predict(lm.model,testset)
+mean((testset$Salary-lm.pred)^2)
+
+library(glmnet)
+xmat <- model.matrix(Salary~.,data = trainset)
+x.test <- model.matrix(Salary~.,data=testset)
+lasso.model <- cv.glmnet(xmat,trainset$Salary,alpha = 1)
+lasso.pred <- predict(lasso.model,newx=x.test)
+mean((testset$Salary-lasso.pred)^2)
+```
+Thus the boosting method has the least test MSE.
+
+##f
+```{r}
+boost.model <-  gbm(Salary~.,data = trainset,distribution = "gaussian",n.trees = 1000,shrinkage = lambda.opt)
+summary(boost.model)
+```
+Thereforce, CAtBAt,CRBI and CHits are the three most important variables.
+
+
+##g
+```{r}
+library(randomForest)
+bag.model <- randomForest(Salary~.,data = trainset,ntree=1000,mtry=19)
+bag.pred <- predict(bag.model,testset)
+#test mse
+mean((testset$Salary-bag.pred)^2)
+```
